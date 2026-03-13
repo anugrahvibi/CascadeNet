@@ -1,0 +1,418 @@
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+// Cascadenet: Advanced Intelligence & Response Control System
+import { BrowserRouter, Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom';
+import { Bell, LogOut, X, ArrowRight, Clock, Shield, Activity, AlertTriangle } from 'lucide-react';
+
+// Dashboards
+import { NdrfDashboard } from './dashboards/NdrfDashboard';
+import { DamOperatorDashboard } from './dashboards/DamOperatorDashboard';
+import { DistrictAdminDashboard } from './dashboards/DistrictAdminDashboard';
+import { HighwayDepartmentDashboard } from './dashboards/HighwayDepartmentDashboard';
+import { DevDashboard } from './dashboards/DevDashboard';
+import { PublicPortal } from './dashboards/PublicPortal';
+import { DemoControl } from './dashboards/DemoControl';
+
+// Components
+import { Login } from './components/Login';
+import { Signup } from './components/Signup';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Context
+import { AuthProvider, useAuth } from './AuthContext';
+import type { Role } from './AuthContext';
+import { fetchActiveAlerts } from './utils/dataFetcher';
+import type { StakeholderAction } from '@schema';
+import { useGsapAnimations } from './utils/useGsapAnimations';
+
+const roleToAlertDepartment: Record<Exclude<Role, null>, string> = {
+  'Dam Controller': 'dam_controller',
+  'NDRF': 'ndrf_rescue',
+  'District Collector': 'district_admin',
+  'Highway Department': 'highway_department',
+  'Developer': 'dev_sys',
+  'Public': 'Public',
+};
+
+const roleToRoute: Record<Exclude<Role, null>, string> = {
+  'Dam Controller': '/dam',
+  'NDRF': '/ndrf',
+  'District Collector': '/admin',
+  'Highway Department': '/highway',
+  'Developer': '/dev',
+  'Public': '/public',
+};
+
+import { gsap } from 'gsap';
+
+function Navigation() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { role, logout, setRoleDirectly, simulationMode, toggleSimulation } = useAuth();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<StakeholderAction[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isRendered, setIsRendered] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const notificationRef = useRef<HTMLElement>(null);
+
+  useGsapAnimations(navRef as any);
+
+  const isAuthPage = location.pathname === '/' || location.pathname === '/signup' || location.pathname === '/login';
+  const departmentKey = role ? roleToAlertDepartment[role] : null;
+
+  // ── ALL hooks must come before any conditional returns ──────────────────────
+  useEffect(() => {
+    if (isRendered && notificationRef.current) {
+      gsap.fromTo(notificationRef.current,
+        {
+          opacity: 0,
+          scale: 0.95,
+          y: -10,
+          transformOrigin: 'top right'
+        },
+        {
+          opacity: 1,
+          scale: 1,
+          y: 0,
+          duration: 0.25,
+          ease: 'power2.out'
+        }
+      );
+    }
+  }, [isRendered]);
+
+  useEffect(() => {
+    if (!departmentKey || isAuthPage) return;
+    let isMounted = true;
+
+    const syncNotifications = async () => {
+      const items = await fetchActiveAlerts(departmentKey);
+      if (!isMounted) return;
+
+      // Check for Distress Signal (SOS)
+      const distress = items.find((item: any) => (item as any).is_distress);
+      if (distress) {
+        // Trigger Native System Notification (SMS Style)
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const tStamp = (distress as any).timestamp || 'now';
+          const hasNotified = sessionStorage.getItem(`notified-${tStamp}`);
+          if (!hasNotified) {
+            new Notification('📩 TRACE: EMERGENCY-SOS', {
+              body: `[TACTICAL SMS] ALERT: ${distress.action}. DEPLOY IMMEDIATELY.`,
+              icon: '/logo.svg',
+              tag: 'emergency-sos',
+              requireInteraction: true
+            });
+            sessionStorage.setItem(`notified-${tStamp}`, 'true');
+          }
+        }
+      }
+
+      setNotifications(items);
+      setUnreadCount(isNotificationsOpen ? 0 : items.length);
+    };
+
+    syncNotifications();
+    const interval = setInterval(syncNotifications, 5000); // Background polling for SOS
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [departmentKey, isNotificationsOpen, isAuthPage]);
+
+  useEffect(() => {
+    if (isNotificationsOpen) {
+      setUnreadCount(0);
+    }
+  }, [isNotificationsOpen]);
+
+  const visibleNotifications = useMemo(() => notifications.slice(0, 8), [notifications]);
+
+  if (isAuthPage) return null;
+
+  const toggleNotifications = () => {
+    if (isNotificationsOpen) {
+      // Exit Animation
+      if (notificationRef.current) {
+        gsap.to(notificationRef.current, {
+          opacity: 0,
+          scale: 0.95,
+          y: -10,
+          duration: 0.2,
+          ease: 'power2.in',
+          onComplete: () => {
+            setIsNotificationsOpen(false);
+            setIsRendered(false);
+          }
+        });
+      } else {
+        setIsNotificationsOpen(false);
+        setIsRendered(false);
+      }
+    } else {
+      setIsRendered(true);
+      setIsNotificationsOpen(true);
+    }
+  };
+
+  const onNotificationClick = () => {
+    if (!role) return;
+    setIsNotificationsOpen(false);
+    const destination = roleToRoute[role];
+    if (destination && location.pathname !== destination) {
+      navigate(destination);
+    }
+  };
+
+  const clearNotifications = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+  };
+
+  const animateNavButtonHover = (element: HTMLElement, isEntering: boolean) => {
+    gsap.to(element, {
+      y: isEntering ? -2 : 0,
+      scale: isEntering ? 1.04 : 1,
+      duration: isEntering ? 0.18 : 0.2,
+      ease: 'power2.out',
+      overwrite: 'auto'
+    });
+  };
+
+  const getSeverityClasses = (level: string) => {
+    if (level === 'RED') return 'glass-tint-red';
+    if (level === 'AMBER' || level === 'ORANGE') return 'glass-tint-orange';
+    return 'glass-tint-blue';
+  };
+
+  return (
+    <>
+      <nav ref={navRef} className="fixed top-3 sm:top-5 left-1/2 -translate-x-1/2 w-[94%] sm:w-[92%] max-w-7xl h-14 sm:h-[4.25rem] rounded-[1.4rem] sm:rounded-[1.8rem] flex items-center justify-between px-2 sm:px-3 md:px-4 z-50 border border-white/80 glass-card overflow-visible [--glass-card-filter:none]">
+        <div className="glass-blur-fix" />
+        <div className="flex items-center gap-3 md:gap-5">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img src="/logo.svg" alt="Cascadenet logo" className="w-7 h-7" />
+            </div>
+            <h1 className="text-lg sm:text-xl font-black text-gray-950 brand-font leading-none">
+              Cascade<span className="text-blue-700 ending-serif">Net</span>
+            </h1>
+          </div>
+
+          <div className="hidden xl:flex items-center gap-1 p-1 glass-card rounded-full border border-white/40">
+            {([
+              { r: 'Dam Controller', label: 'Dam' },
+              { r: 'NDRF', label: 'NDRF' },
+              { r: 'District Collector', label: 'Admin' },
+              { r: 'Highway Department', label: 'Highway' }
+            ] as { r: Role, label: string }[]).map(({ r, label }) => (
+              <button
+                key={r as string}
+                onClick={() => {
+                  setRoleDirectly(r);
+                  navigate(roleToRoute[r as Exclude<Role, null>]);
+                }}
+                className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase transition-all ${role === r ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-white/40'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden lg:flex items-center gap-3 px-4 py-2 border-r border-black/5 mr-2">
+            <div className="flex flex-col items-end leading-none">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Global Sync</span>
+              <span className={`text-[12px] font-black uppercase ${simulationMode === 'FLOOD' ? 'text-red-600' : 'text-emerald-600'}`}>{simulationMode}</span>
+            </div>
+            <button
+              onClick={toggleSimulation}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 ${simulationMode === 'FLOOD' ? 'glass-tint-red text-red-600' : 'glass-tint-emerald text-emerald-600'}`}
+            >
+              {simulationMode === 'FLOOD' ? <AlertTriangle size={14} /> : <Activity size={14} />}
+            </button>
+          </div>
+
+          <div className="hidden md:flex flex-col items-end text-right leading-none">
+            <span className="text-[13px] font-black text-gray-800 uppercase tracking-tight">{role}</span>
+          </div>
+          <button
+            aria-label="Open notifications"
+            onClick={toggleNotifications}
+            onMouseEnter={(e) => animateNavButtonHover(e.currentTarget, true)}
+            onMouseLeave={(e) => animateNavButtonHover(e.currentTarget, false)}
+            className="relative h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center rounded-full glass-card text-gray-700 active:scale-90"
+          >
+            <Bell size={19} strokeWidth={2.4} className={unreadCount > 0 ? 'animate-pulse text-blue-600' : ''} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 rounded-full bg-red-600 text-white text-[11px] font-black leading-[20px] text-center shadow-lg">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={logout}
+            onMouseEnter={(e) => animateNavButtonHover(e.currentTarget, true)}
+            onMouseLeave={(e) => animateNavButtonHover(e.currentTarget, false)}
+            className="h-9 sm:h-10 w-9 sm:min-w-[112px] sm:w-auto flex items-center justify-center gap-0 sm:gap-2 glass-card text-gray-800 px-0 sm:px-4 rounded-full font-black text-[12px] uppercase active:scale-95 shadow-sm"
+          >
+            <LogOut size={14} className="shrink-0" /> <span className="hidden sm:inline">Logout</span>
+          </button>
+        </div>
+      </nav>
+
+      {isRendered && (
+        <>
+          <aside ref={notificationRef} className="fixed top-[5.25rem] sm:top-[6.8rem] right-[3%] sm:right-[4%] md:right-7 w-[380px] max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-6rem)] sm:max-h-[76vh] z-[60] rounded-[1.5rem] sm:rounded-[2rem] glass-card overflow-hidden origin-top-right">
+            <header className="px-5 sm:px-6 py-4 glass-header">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[13px] font-black tracking-wide text-slate-900 uppercase">Astrava Directive Hub</div>
+                  <div className="mt-1 text-[12px] font-black text-slate-500 uppercase">Live Sector Sync</div>
+                  <div className="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black uppercase text-slate-600">
+                    {notifications.length} Active Alerts
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={clearNotifications}
+                    className="px-3 py-1.5 rounded-full text-[11px] font-black text-slate-700 hover:text-slate-900 hover:bg-slate-50/70 uppercase transition-all"
+                  >
+                    Clear Hub
+                  </button>
+                  <button
+                    aria-label="Close directive hub"
+                    onClick={toggleNotifications}
+                    className="h-9 w-9 rounded-xl border border-slate-200/70 text-slate-700 hover:bg-slate-100/80 flex items-center justify-center transition-all active:scale-90"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <div className="max-h-[calc(76vh-5.5rem)] overflow-y-auto custom-scrollbar p-3 space-y-2.5" style={{ background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(var(--glass-blur))' }}>
+              {visibleNotifications.length > 0 ? (
+                visibleNotifications.map((item, idx) => (
+                  <button
+                    key={`${item.department}-${idx}`}
+                    onClick={onNotificationClick}
+                    className={`w-full text-left p-5 rounded-2xl ${getSeverityClasses(item.alert_level)} hover:shadow-md hover:-translate-y-0.5 transition-all group flex items-center justify-between gap-4`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <span className={`text-[13px] font-black uppercase tracking-wide truncate ${item.alert_level === 'RED' ? 'text-red-700' : (item.alert_level === 'ORANGE' ? 'text-orange-700' : 'text-blue-700')}`}>{item.department}</span>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${item.alert_level === 'RED' ? 'bg-red-100 text-red-700' : (item.alert_level === 'ORANGE' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')}`}>{item.alert_level}</span>
+                      </div>
+                      <p className="text-[14px] font-semibold leading-snug text-slate-800 line-clamp-2">{item.action}</p>
+                      {item.time_window_hours !== undefined && (
+                        <div className="mt-2 text-[11px] font-black text-slate-500 uppercase flex items-center gap-1.5 tracking-wide">
+                          <Clock size={12} className="opacity-50" /> T-{item.time_window_hours}H
+                        </div>
+                      )}
+                    </div>
+                    <ArrowRight size={20} className={`shrink-0 opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all ${item.alert_level === 'RED' ? 'text-red-700' : (item.alert_level === 'ORANGE' ? 'text-orange-700' : 'text-blue-700')}`} />
+                  </button>
+                ))
+              ) : (
+                <div className="py-10 px-6 text-center rounded-2xl border border-dashed border-slate-300/80 bg-white/70 backdrop-blur-md">
+                  <p className="text-[14px] font-semibold text-slate-500">No active notifications</p>
+                </div>
+              )}
+            </div>
+          </aside>
+        </>
+      )}
+    </>
+  );
+}
+
+function ProtectedRoute({ children, allowedRole }: { children: React.ReactNode, allowedRole: Role }) {
+  const { role } = useAuth();
+  const persistedRole = (localStorage.getItem('cascade_role') as Role) || null;
+  const effectiveRole = role || persistedRole;
+  if (effectiveRole !== allowedRole) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+function AuthRedirect({ children }: { children: React.ReactNode }) {
+  const { role } = useAuth();
+  const persistedRole = (localStorage.getItem('cascade_role') as Role) || null;
+  const effectiveRole = role || persistedRole;
+  if (effectiveRole === 'Dam Controller') return <Navigate to="/dam" replace />;
+  if (effectiveRole === 'NDRF') return <Navigate to="/ndrf" replace />;
+  if (effectiveRole === 'District Collector') return <Navigate to="/admin" replace />;
+  if (effectiveRole === 'Highway Department') return <Navigate to="/highway" replace />;
+  if (effectiveRole === 'Developer') return <Navigate to="/dev" replace />;
+  if (effectiveRole === 'Public') return <Navigate to="/public" replace />;
+  return <>{children}</>;
+}
+
+function AppContent() {
+  const { role } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    const routeTitles: Record<string, string> = {
+      '/': 'Cascadenet | Login',
+      '/login': 'Cascadenet | Login',
+      '/signup': 'Cascadenet | Sign Up',
+      '/ndrf': 'Cascadenet | NDRF Dashboard',
+      '/dam': 'Cascadenet | Dam Controller Dashboard',
+      '/admin': 'Cascadenet | District Collector Dashboard',
+      '/highway': 'Cascadenet | Highway Department Dashboard',
+      '/dev': 'Cascadenet | Developer Dashboard',
+      '/public': 'Cascadenet | Public Dashboard',
+      '/trigger': 'Cascadenet | Field SOS Unit',
+    };
+
+    document.title = routeTitles[location.pathname] ?? 'Cascadenet | Flood Intelligence';
+  }, [location.pathname]);
+
+  return (
+    <div className="h-dvh min-h-dvh w-full bg-[#f8fafc] text-gray-900 flex flex-col overflow-hidden relative font-sans no-scrollbar">
+      {/* Ambient backgrounds — must be vivid so glassmorphism shows */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+        <div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[70%] h-[50%] bg-blue-600/30 blur-[120px] rounded-full" />
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-700/20 blur-[140px] rounded-full animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-800/20 blur-[140px] rounded-full" />
+        <div className="absolute top-[30%] right-[5%] w-[35%] h-[35%] bg-sky-500/15 blur-[120px] rounded-full" />
+      </div>
+
+      {role && <Navigation />}
+
+      <main className="flex-1 w-full h-full relative z-10 overflow-hidden">
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<AuthRedirect><Login /></AuthRedirect>} />
+            <Route path="/signup" element={<AuthRedirect><Signup /></AuthRedirect>} />
+            <Route path="/ndrf" element={<ProtectedRoute allowedRole="NDRF"><NdrfDashboard /></ProtectedRoute>} />
+            <Route path="/dam" element={<ProtectedRoute allowedRole="Dam Controller"><DamOperatorDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute allowedRole="District Collector"><DistrictAdminDashboard /></ProtectedRoute>} />
+            <Route path="/highway" element={<ProtectedRoute allowedRole="Highway Department"><HighwayDepartmentDashboard /></ProtectedRoute>} />
+            <Route path="/dev" element={<ProtectedRoute allowedRole="Developer"><DevDashboard /></ProtectedRoute>} />
+            <Route path="/public" element={<ProtectedRoute allowedRole="Public"><PublicPortal /></ProtectedRoute>} />
+            <Route path="/trigger" element={<DemoControl />} />
+          </Routes>
+        </ErrorBoundary>
+      </main>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+
+export default App;
