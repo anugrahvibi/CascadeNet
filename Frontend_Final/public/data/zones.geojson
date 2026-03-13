@@ -1,0 +1,257 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE_KALPETTA",
+        "name": "Kalpetta Town",
+        "lat": 11.6100,
+        "lon": 76.0800,
+        "elevation_m": 780.0,
+        "area_km2": 40.7,
+        "population": 31580,
+        "river_proximity_km": 1.5,
+        "reservoir_upstream": "Banasura Sagar",
+        "description": "District headquarters, moderate elevation, urban center"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              76.06,
+              11.59
+            ],
+            [
+              76.10,
+              11.59
+            ],
+            [
+              76.10,
+              11.63
+            ],
+            [
+              76.06,
+              11.63
+            ],
+            [
+              76.06,
+              11.59
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE_SULTHAN_BATHERY",
+        "name": "Sulthan Bathery",
+        "lat": 11.6600,
+        "lon": 76.2600,
+        "elevation_m": 880.0,
+        "area_km2": 55.2,
+        "population": 42150,
+        "river_proximity_km": 3.0,
+        "reservoir_upstream": "Kabini Tributary",
+        "description": "Highland plateau, major commerce hub"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              76.24,
+              11.64
+            ],
+            [
+              76.28,
+              11.64
+            ],
+            [
+              76.28,
+              11.68
+            ],
+            [
+              76.24,
+              11.68
+            ],
+            [
+              76.24,
+              11.64
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE_MANANTHAVADY",
+        "name": "Mananthavady",
+        "lat": 11.8000,
+        "lon": 76.0200,
+        "elevation_m": 750.0,
+        "area_km2": 48.5,
+        "population": 38900,
+        "river_proximity_km": 0.5,
+        "reservoir_upstream": "Kabini",
+        "description": "Northern hub, riverside location, high flood risk"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              76.00,
+              11.78
+            ],
+            [
+              76.04,
+              11.78
+            ],
+            [
+              76.04,
+              11.82
+            ],
+            [
+              76.00,
+              11.82
+            ],
+            [
+              76.00,
+              11.78
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE_VYTHIRI",
+        "name": "Vythiri",
+        "lat": 11.5500,
+        "lon": 76.0400,
+        "elevation_m": 700.0,
+        "area_km2": 32.1,
+        "population": 18400,
+        "river_proximity_km": 0.8,
+        "reservoir_upstream": "Banasura Sagar Spillway",
+        "description": "Valley location, high rainfall zone, flash flood prone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              76.02,
+              11.53
+            ],
+            [
+              76.06,
+              11.53
+            ],
+            [
+              76.06,
+              11.57
+            ],
+            [
+              76.02,
+              11.57
+            ],
+            [
+              76.02,
+              11.53
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE_PANAMARAM",
+        "name": "Panamaram Basin",
+        "lat": 11.7200,
+        "lon": 76.0700,
+        "elevation_m": 740.0,
+        "area_km2": 42.1,
+        "population": 25600,
+        "river_proximity_km": 0.2,
+        "reservoir_upstream": "Banasura Sagar",
+        "description": "River confluence point, extremely high inundation risk"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              76.05,
+              11.70
+            ],
+            [
+              76.09,
+              11.70
+            ],
+            [
+              76.09,
+              11.74
+            ],
+            [
+              76.05,
+              11.74
+            ],
+            [
+              76.05,
+              11.70
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE_AMBALAVAYAL",
+        "name": "Ambalavayal",
+        "lat": 11.6200,
+        "lon": 76.2100,
+        "elevation_m": 820.0,
+        "area_km2": 35.8,
+        "population": 21300,
+        "river_proximity_km": 2.5,
+        "reservoir_upstream": "Karapuzha",
+        "description": "Agricultural belt, moderate risk"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              76.19,
+              11.60
+            ],
+            [
+              76.23,
+              11.60
+            ],
+            [
+              76.23,
+              11.64
+            ],
+            [
+              76.19,
+              11.64
+            ],
+            [
+              76.19,
+              11.60
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
