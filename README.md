@@ -1,114 +1,116 @@
-# Cascadenet — AI/ML Module
+# CascadeNet 3.0 — Intelligent Critical Infrastructure & Cascade Failure Simulation
 
-> **Hackathena Hackathon** | Infrastructure Cascade Failure Prediction | Wayanad, Kerala
-
-A 3-model AI/ML pipeline that simulates how a flood event causes cascading failures across Wayanad's power, water, and healthcare infrastructure — and computes which interventions save the most lives per rupee invested.
-
----
-
-## Architecture
-
-```
-Flood Scenario          Dependency Graph        Cascade Propagator
-(Hazard Generator)  →   (NetworkX + RF)     →   (Event-Driven Sim)
-                                                        ↓
-                                               ROI Calculator
-                                               (Lives-Saved/₹)
-```
-
-### Model 1 — Dependency Graph (`src/models/dependency_graph.py`)
-- `NetworkX` directed graph: 5 Substations → 10 Water Pumps → 3 Hospitals
-- **Random Forest** trains on historical failure data to weight each edge with a `failure_probability`
-- `harden_node(node_id)` sets a node's threshold to `∞` for What-If analysis
-
-### Model 2 — Hazard Generator (`src/models/hazard_generator.py`)
-- Loads 2024 Wayanad flood baseline (`data/flood_map_2024_wayanad.csv`)
-- **Sine temporal model**: `depth(t) = base × multiplier × sin(π×t/24)` — peaks at hour 12
-- Generates **100 scenarios** with ±20% random variation from the 2024 peak
-
-### Model 3 — Cascade Propagator (`src/models/cascade_propagator.py`)
-- Hourly loop (0–24h), threshold checks at each node
-- If `node_depth > flood_threshold` → node `FAILED`
-- If parent (substation) fails at hour H → children (pumps) fail at hour H+1
-- Runs all 100 scenarios in parallel using `multiprocessing.Pool`
-- Outputs `outputs/scenarios.json`
-
-### ROI Calculator (`src/models/roi_calculator.py`)
-- Compares baseline vs. hardened simulation
-- **Metric**: `Lives-Saved-Per-Rupee = approximate_lives_saved / cost_INR`
+> **Hackathena Hackathon Project** | Wayanad District, Kerala, India
+> An AI/ML and Geospatial decision-support system that models how flood hazards propagate cascading failures across power grid, water supply, and healthcare infrastructure, and optimizes strategic investments using dynamic programming.
 
 ---
 
-## Quick Start
+## 🧭 Project Overview
 
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+CascadeNet 3.0 is a full-stack, emergency response and infrastructure hardening planning application. In extreme weather events, critical infrastructure elements (e.g., water pumps, hospitals, roads) fail not only due to direct inundation but also due to upstream supply line breakages (e.g., a flooded substation disabling municipal water pumps, which subsequently paralyzes emergency hospitals).
 
-# 2. Run the full pipeline (no server needed)
-python run_pipeline_wayanad.py
+CascadeNet addresses this by:
+1. **Predicting Flood Hazards:** Forecasting localized water elevation and arrival timelines per zone using an **LSTM model** (and a physics-informed fallback).
+2. **Simulating Cascades:** Replaying event-driven failure cascades across a **NetworkX Directed Graph** over a 24-hour window for an ensemble of 100 scenarios.
+3. **Optimizing Actionability:** Mapping risks to department-specific emergency checklists (Dam operations, NDRF rescue, District Collector evacuations) grounded in Central Water Commission (CWC) and NDMA protocols.
+4. **Strategizing Budgets:** Running a **0/1 Knapsack dynamic programming algorithm** to maximize lives saved per rupee under arbitrary budget caps.
+5. **Interactive 3D Visualizations:** Serving geospatial grids and dynamic boundary datasets to a React + Vite Mapbox WebGL frontend.
 
-# 3. Start the API server
-uvicorn src.api.main:app --reload --port 8000
+---
 
-# 4. Open the interactive docs
-# → http://localhost:8000/docs
+## 🧱 System Architecture
+
+```
+                                +---------------------------+
+                                |  Interactive 3D Frontend  |
+                                |  (Vite + React + Mapbox)   |
+                                +-------------+-------------+
+                                              |  API Requests
+                                              v
+                                +-------------+-------------+
+                                |      FastAPI Backend      |
+                                |  (Python + MongoDB Cache) |
+                                +-------------+-------------+
+                                              |
+                       +----------------------+----------------------+
+                       |                                             |
+                       v                                             v
+        +--------------+--------------+               +--------------+--------------+
+        |        AI/ML Engine         |               |      Geospatial Engine      |
+        |  (NetworkX, RF, LSTM, DP)   |               |   (Rasterio, SciPy Splines) |
+        +--------------+--------------+               +--------------+--------------+
+                       |                                             |
+                       v                                             v
+               • Dependency Graph                             • Sentinel-2 GeoTIFF
+               • Hazard Generator                             • Spline Interpolation
+               • Cascade Propagator                           • Voronoi Tessellations
+               • ROI Budget Optimizer                         • Geovisual Asset Export
 ```
 
 ---
 
-## API Endpoints
+## 📂 Repository Directory Layout
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Health check |
-| `POST` | `/simulate` | Run full 100-scenario simulation |
-| `GET` | `/scenarios` | All scenario results (JSON) |
-| `GET` | `/graph` | Infrastructure graph (nodes + edges) |
-| `GET` | `/node/{node_id}` | Single node details |
-| `POST` | `/harden/{node_id}` | What-If: harden a node, compute ROI |
-| `GET` | `/roi/rank` | Rank all nodes by Lives-Saved-Per-Rupee |
+The codebase is organized into modular directories representing each system tier:
 
-**Example — Harden a substation:**
-```bash
-curl -X POST http://localhost:8000/harden/SUB_3 \
-  -H "Content-Type: application/json" \
-  -d '{"cost_rupees": 1000000}'
+```text
+📁 CascadeNet/
+├── 📁 AI_ML/                       # Core AI/ML pipeline models
+│   ├── 📁 data/                    # JSON/CSV coordinates, infrastructure nodes, and historic logs
+│   ├── 📁 outputs/                 # Auto-generated 100-scenario simulation results
+│   ├── 📁 src/
+│   │   ├── 📁 api/                 # FastAPI routing wrappers (main_wayanad.py)
+│   │   └── 📁 models/              # Model logic scripts (LSTM, Graph Analytics, ROI, etc.)
+│   ├── 📄 API_GUIDE.md             # Developer handbook for REST endpoints
+│   ├── 📄 run_pipeline_wayanad.py  # Standalone CLI tool to run the pipeline
+│   └── 📄 requirements.txt         # Core ML dependencies (TensorFlow, Scikit-Learn)
+│
+├── 📁 Backend/                     # Main Web API Server
+│   ├── 📁 app/                     # App logic, MongoDB config, routers, schemas
+│   └── 📄 requirements.txt         # Backend server dependencies
+│
+├── 📁 Frontend_New_Final/          # Main Web Dashboard App
+│   ├── 📁 src/                     # React components, Mapbox integration, hooks, UI styling
+│   ├── 📄 vite.config.ts           # Vite configuration
+│   └── 📄 package.json             # Node dependencies
+│
+├── 📁 Geospatial model/            # GIS mapping & satellite rendering module
+│   ├── 📁 Geovisuals/              # Pre-rendered static/animated mapping assets
+│   ├── 🐍 geo_flood_model.py       # Core GIS execution script
+│   ├── 🗺️ wayanad_boundary.geojson # Administrative boundary shapefile of Wayanad
+│   └── 📄 requirements.txt         # GIS dependencies (Geopandas, Rasterio)
+│
+└── 📄 README.md                    # This master documentation file
 ```
 
 ---
 
-## Infrastructure Nodes (Wayanad Example)
+## ⚙️ Core Modules & Model Logic
 
-| ID | Type | Name | Flood Threshold | Population Impact |
-|----|------|------|----------------|-------------------|
-| SUB_1 | Substation | Kalpetta Main | 0.5m | 35,000 |
-| SUB_2 | Substation | Mananthavady | 0.6m | 20,000 |
-| SUB_3 | Substation | Vythiri Core | **0.4m** | 15,000 |
-| SUB_4 | Substation | Sulthan Bathery | **0.35m** | 25,000 |
-| SUB_5 | Substation | Panamaram North | 0.7m | 12,000 |
-| PUMP_1–10 | Water Pump | Various (Meppadi, Vythiri) | 0.25–0.5m | 5k–15k each |
-| HOSP_1–3 | Hospital | District / General / Private | 0.4–0.6m | 20k–50k each |
+### 1. The Predictive Layer (`AI_ML/src/models/`)
+
+Detailed walkthroughs of the model files can be found in [models_walkthrough.md](file:///c:/Users/Athul%20VR/OneDrive/Desktop/Cascade%20net/CascadeNet/AI_ML/src/models/models_walkthrough.md):
+
+* **`lstm_predictor_wayanad.py` (LSTM Forecasting Engine):** Matches time-series variables (GPM rainfall, WRIS river gauge, Banasura Sagar outflow) to predict zone-specific flood probability, peak water height, and remaining lead times. Falls back to a physics-informed exponential smoothing algorithm if TensorFlow is absent.
+* **`dependency_graph.py` (Network Graph Builder):** Assembles a directed infrastructure dependency graph of Wayanad using NetworkX. Edge weights (failure probabilities) are assigned using a **Random Forest Classifier** trained on historical logs based on physical distance and supply relations.
+* **`hazard_generator.py` (Hazard Generator):** Simulates the spatial-temporal water envelope over 24 hours peaking at hour 12 using a sine wave. Generates 100 random peak-multiplier variations ($0.8\times$ to $1.2\times$ baseline) to establish probability scenarios.
+* **`cascade_propagator.py` (Cascade Simulator):** Event-driven simulator that runs the 24-hour cycle. Commences node failure if local depth violates the node threshold, or if parent nodes failed, and schedules child node failures. Runs in parallel using a `multiprocessing` worker pool.
+* **`graph_analytics.py` (Network Science Engine):** Evaluates Betweenness, PageRank, Closeness, and Degree centralities to compute a composite **Singularity Index (SI)**, highlighting high-leverage node bottlenecks for operations staff.
+* **`roi_calculator.py` (Resource Allocation Optimizer):** Calculates Lives-Saved-Per-Rupee of interventions:
+  $$\text{ROI} = \frac{\text{Baseline Impact (pop-hours)} - \text{Hardened Impact (pop-hours)}}{\text{Cost}}$$
+  Employs a **0/1 Knapsack dynamic programming algorithm** to select the optimal selection of node protections given a fixed budget ceiling.
+* **`action_router.py` (Actionability Router):** Implements a rules-based table that routes LSTM inputs to structured command actions for four key stakeholders (Dam Safety, NDRF, Collector, Highways) grounded in official CWC & NDMA documents.
+
+### 2. The Geospatial Layer (`Geospatial model/`)
+
+Detailed documentation is available in [geospatial_model_walkthrough.md](file:///c:/Users/Athul%20VR/OneDrive/Desktop/Cascade%20net/CascadeNet/Geospatial%20model/geospatial_model_walkthrough.md):
+
+* **Sentinel-2 Registration (`rasterio`):** Visualizes satellite imagery overlays applying a 2% contrast stretch.
+* **Continuous Surface Interpolation (`scipy.interpolate.griddata`):** Builds a high-resolution grid using cubic splines from scattered sensor gauges, clipped via geopandas to `wayanad_boundary.geojson`.
+* **GIS Visual Exports (`Geovisuals/`):** Generates:
+  * `wayanad_satellite_flood_map.png`: High-contrast static representation of 2018 peak inundation.
+  * `wayanad_cascade_animation.gif`: 24-hour animated time-lapse of failure propagation.
+  * `wayanad_ensemble_heatmap.png`: Comparison panels highlighting mean flood depths and node vulnerability frequencies.
 
 ---
 
-## File Structure
-
-```
-AI_ML/
-├── data/
-│   ├── wayanad_infrastructure.json   # Node + edge definitions
-│   ├── flood_map_2024_wayanad.csv    # Base flood depth grid
-│   └── historical_failures_wayanad.csv # RF training data
-├── src/
-│   ├── models/
-│   │   ├── dependency_graph.py     # Model 1
-│   │   ├── hazard_generator.py     # Model 2
-│   │   ├── cascade_propagator.py   # Model 3
-│   │   └── roi_calculator.py       # ROI metric
-│   └── api/
-│       └── main.py                 # FastAPI app
-├── outputs/                        # Auto-generated scenario JSONs
-├── run_pipeline_wayanad.py          # One-shot demo runner (Wayanad)
-└── requirements.txt
-```
